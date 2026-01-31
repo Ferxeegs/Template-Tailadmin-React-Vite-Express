@@ -1,0 +1,142 @@
+// This is your Prisma schema file,
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// USER & AUTHENTICATION MODELS
+// ==========================================
+
+model User {
+  id                String    @id @default(uuid()) @db.Char(36)
+  username          String    @unique @db.VarChar(255)
+  firstname         String    @db.VarChar(255)
+  lastname          String    @db.VarChar(255)
+  fullname          String?   @db.VarChar(255)
+  phone_number      String?   @db.VarChar(255)
+  email             String    @unique @db.VarChar(255)
+  email_verified_at DateTime? @db.Timestamp(0)
+  password          String    @db.VarChar(255)
+  remember_token    String?   @db.VarChar(100)
+  created_at        DateTime? @db.Timestamp(0)
+  updated_at        DateTime? @db.Timestamp(0)
+  created_by        String?   @db.Char(36)
+  updated_by        String?   @db.Char(36)
+  deleted_by        String?   @db.Char(36)
+  deleted_at        DateTime? @db.Timestamp(0)
+  
+  user_profile   UserProfile?
+  roles        UserRole[]
+
+  @@map("users")
+}
+
+model PasswordResetToken {
+  email      String    @id @db.VarChar(255)
+  token      String    @db.VarChar(255)
+  created_at DateTime? @db.Timestamp(0)
+
+  @@map("password_reset_tokens")
+}
+
+model UserProfile {
+  id           String   @id @default(uuid()) @db.Char(36)
+  user_id      String   @unique @db.Char(36) // Relasi 1-ke-1 ke tabel User
+  nim          String   @unique @db.VarChar(50) // Nomor Induk Mahasiswa / KTM
+  major        String?  @db.VarChar(255) // Jurusan
+  faculty      String?  @db.VarChar(255) // Fakultas
+  building_id  BigInt?  @db.UnsignedBigInt
+  room_number  String?  @db.VarChar(50)
+  ktm_path     String?  @db.VarChar(255) // Path file upload foto KTM
+  is_verified  Boolean  @default(false)  // Status verifikasi KTM oleh admin
+  
+  // Relasi ke tabel User
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  building     Building? @relation(fields: [building_id], references: [id])
+
+  @@map("user_profiles")
+}
+
+// ==========================================
+// ROLE & PERMISSION MODELS (RBAC)
+// ==========================================
+
+model Role {
+  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name       String    @unique @db.VarChar(255)
+  guard_name String    @db.VarChar(255)
+  created_at DateTime? @db.Timestamp(0)
+  updated_at DateTime? @db.Timestamp(0)
+
+  permissions RoleHasPermission[]
+  users UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  id      BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id String @db.Char(36)
+  role_id BigInt @db.UnsignedBigInt
+
+  // Definisi Relasi
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, role_id]) // Mencegah satu user punya role yang sama dua kali
+  @@map("user_roles")
+}
+
+model Permission {
+  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name       String    @db.VarChar(255)
+  guard_name String    @db.VarChar(255)
+  created_at DateTime? @db.Timestamp(0)
+  updated_at DateTime? @db.Timestamp(0)
+
+  roles RoleHasPermission[]
+
+  @@map("permissions")
+}
+
+model RoleHasPermission {
+  permission_id BigInt     @db.UnsignedBigInt
+  role_id       BigInt     @db.UnsignedBigInt
+  permission    Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+  role          Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@id([permission_id, role_id])
+  @@map("role_has_permissions")
+}
+
+model RoleHasScope {
+  id            BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  model_role_id BigInt    @db.UnsignedBigInt
+  scope_type    String    @db.VarChar(255)
+  scope_id      String    @db.Char(36)
+  created_at    DateTime? @db.Timestamp(0)
+  updated_at    DateTime? @db.Timestamp(0)
+
+  @@map("role_has_scopes")
+}
+
+// ==========================================
+// ASSET / MASTER DATA MODELS
+// ==========================================
+
+model Building {
+  id           BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name         String    @db.VarChar(255)
+  created_at   DateTime? @db.Timestamp(0)
+  updated_at   DateTime? @db.Timestamp(0)
+
+  residents    UserProfile[]
+
+  @@map("buildings")
+}
