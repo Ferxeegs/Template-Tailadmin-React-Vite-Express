@@ -6,7 +6,7 @@ import { roleAPI } from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 import Input from "../../components/form/input/InputField";
 import Label from "../../components/form/Label";
-import { ArrowRightIcon, LockIcon, CheckLineIcon, AngleLeftIcon, ChevronUpIcon, ChevronDownIcon } from "../../icons";
+import { LockIcon, CheckLineIcon, AngleLeftIcon, ChevronUpIcon, ChevronDownIcon } from "../../icons";
 
 interface Permission {
   id: string;
@@ -355,17 +355,18 @@ export default function EditRole() {
         <PageMeta title="Edit Role | TailAdmin" description="Edit role information" />
         <PageBreadcrumb
           pageTitle={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 font-normal text-base">
               <Link
                 to="/roles"
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
               >
                 Roles
               </Link>
-              <ArrowRightIcon className="w-4 h-4 text-gray-400" />
+              <span className="text-gray-600">&gt;</span>
               <span>Edit Role</span>
             </div>
           }
+          hideBreadcrumb={true}
         />
         <div className="flex items-center justify-center py-12">
           <div className="text-gray-500 dark:text-gray-400">Memuat data role...</div>
@@ -393,19 +394,20 @@ export default function EditRole() {
       <PageMeta title={`Edit ${roleName} | TailAdmin`} description="Edit role information" />
       <PageBreadcrumb
         pageTitle={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 font-normal text-base">
             <Link
               to="/roles"
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+              className="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
             >
               Roles
             </Link>
-            <ArrowRightIcon className="w-4 h-4 text-gray-400" />
+            <span className="text-gray-600">&gt;</span>
             <span>{roleName}</span>
-            <ArrowRightIcon className="w-4 h-4 text-gray-400" />
+            <span className="text-gray-600">&gt;</span>
             <span>Edit</span>
           </div>
         }
+        hideBreadcrumb={true}
       />
 
       <div className="space-y-6">

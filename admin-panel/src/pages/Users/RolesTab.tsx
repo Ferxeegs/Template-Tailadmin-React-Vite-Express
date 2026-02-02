@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { roleAPI } from "../../utils/api";
-import Badge from "../../components/ui/badge/Badge";
 import { CheckLineIcon } from "../../icons";
 
 interface Role {
@@ -89,9 +88,9 @@ export default function RolesTab({
                   <div className="font-medium text-gray-800 dark:text-white">
                     {role.name}
                   </div>
-                  <Badge size="sm" color="info">
+                  {/* <Badge size="sm" color="info">
                     {role.guard_name}
-                  </Badge>
+                  </Badge> */}
                 </div>
               </div>
             </div>

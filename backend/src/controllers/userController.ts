@@ -58,6 +58,17 @@ export const getAllUsers = async (req: Request, res: Response): Promise<Response
               is_verified: true,
             },
           },
+          roles: {
+            select: {
+              role: {
+                select: {
+                  id: true,
+                  name: true,
+                  guard_name: true,
+                },
+              },
+            },
+          },
         },
         orderBy: {
           created_at: 'desc',
@@ -66,8 +77,18 @@ export const getAllUsers = async (req: Request, res: Response): Promise<Response
       prisma.user.count({ where }),
     ]);
 
+    // Format users with roles
+    const formattedUsers = users.map((user: any) => ({
+      ...user,
+      roles: user.roles.map((ur: any) => ({
+        id: ur.role.id.toString(),
+        name: ur.role.name,
+        guard_name: ur.role.guard_name,
+      })),
+    }));
+
     return sendSuccess(res, 'Data users berhasil diambil', {
-      users,
+      users: formattedUsers,
       pagination: {
         page: pageNumber,
         limit: limitNumber,
@@ -260,7 +281,7 @@ export const createUser = async (req: Request, res: Response): Promise<Response>
           id: { in: roleIds.map((id: string) => BigInt(id)) },
         },
       });
-      hasMahasiswaRole = roles.some((r) => r.name === 'mahasiswa');
+      hasMahasiswaRole = roles.some((r: { name: string }) => r.name === 'mahasiswa');
     }
 
     // Cek apakah NIM sudah digunakan (jika ada)
@@ -455,18 +476,22 @@ export const updateUser = async (req: Request, res: Response): Promise<Response>
     }
 
     // Check if user has mahasiswa role
-    const userRoles = await prisma.userRole.findMany({
-      where: { user_id: id as string },
-      include: {
-        role: {
+    const userWithRoles = await prisma.user.findUnique({
+      where: { id: id as string },
+      select: {
+        roles: {
           select: {
-            name: true,
+            role: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
       },
     });
 
-    const hasMahasiswaRole = userRoles.some((ur) => ur.role.name === 'mahasiswa');
+    const hasMahasiswaRole = userWithRoles?.roles.some((ur: { role: { name: string } }) => ur.role.name === 'mahasiswa') || false;
 
     // Only allow user_profile update if user has mahasiswa role
     if ((nim || major !== undefined || faculty !== undefined || room_number !== undefined || is_verified !== undefined) && !hasMahasiswaRole) {
@@ -577,7 +602,7 @@ export const updateUserRoles = async (req: Request, res: Response): Promise<Resp
     }
 
     // Validasi role_ids (harus berupa array of strings yang bisa dikonversi ke BigInt)
-    const validRoleIds = role_ids
+    const validRoleIds: bigint[] = role_ids
       .map((rid: any) => {
         try {
           return BigInt(rid);
@@ -585,7 +610,7 @@ export const updateUserRoles = async (req: Request, res: Response): Promise<Resp
           return null;
         }
       })
-      .filter((rid: any) => rid !== null);
+      .filter((rid: bigint | null): rid is bigint => rid !== null);
 
     // Cek apakah semua role ada
     const roles = await prisma.role.findMany({
@@ -598,20 +623,38 @@ export const updateUserRoles = async (req: Request, res: Response): Promise<Resp
       return sendError(res, 'Beberapa role tidak ditemukan', 400);
     }
 
-    // Hapus semua role user yang ada
-    await prisma.userRole.deleteMany({
-      where: { user_id: id as string },
-    });
-
-    // Tambahkan role baru
-    if (validRoleIds.length > 0) {
-      await prisma.userRole.createMany({
-        data: validRoleIds.map((roleId: bigint) => ({
-          user_id: id as string,
-          role_id: roleId,
-        })),
+    // Hapus semua role user yang ada dan tambahkan role baru menggunakan transaction
+    await prisma.$transaction(async (tx) => {
+      // Delete existing roles through user relation
+      const user = await (tx as any).user.findUnique({
+        where: { id: id as string },
       });
-    }
+      
+      if (user) {
+        await (tx as any).user.update({
+          where: { id: id as string },
+          data: {
+            roles: {
+              deleteMany: {},
+            },
+          },
+        });
+
+        // Add new roles
+        if (validRoleIds.length > 0) {
+          await (tx as any).user.update({
+            where: { id: id as string },
+            data: {
+              roles: {
+                create: validRoleIds.map((roleId: bigint) => ({
+                  role_id: roleId,
+                })),
+              },
+            },
+          });
+        }
+      }
+    });
 
     // Get updated user with roles
     const updatedUser = await prisma.user.findUnique({
@@ -745,6 +788,17 @@ export const getDeletedUsers = async (req: Request, res: Response): Promise<Resp
               is_verified: true,
             },
           },
+          roles: {
+            select: {
+              role: {
+                select: {
+                  id: true,
+                  name: true,
+                  guard_name: true,
+                },
+              },
+            },
+          },
         },
         orderBy: {
           deleted_at: 'desc',
@@ -753,8 +807,18 @@ export const getDeletedUsers = async (req: Request, res: Response): Promise<Resp
       prisma.user.count({ where }),
     ]);
 
+    // Format users with roles
+    const formattedUsers = users.map((user: any) => ({
+      ...user,
+      roles: user.roles.map((ur: any) => ({
+        id: ur.role.id.toString(),
+        name: ur.role.name,
+        guard_name: ur.role.guard_name,
+      })),
+    }));
+
     return sendSuccess(res, 'Data deleted users berhasil diambil', {
-      users,
+      users: formattedUsers,
       pagination: {
         page: pageNumber,
         limit: limitNumber,

@@ -90,15 +90,15 @@ export default function RolesList() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "-";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("id-ID", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+  // const formatDate = (dateString: string | null) => {
+  //   if (!dateString) return "-";
+  //   const date = new Date(dateString);
+  //   return date.toLocaleDateString("id-ID", {
+  //     year: "numeric",
+  //     month: "short",
+  //     day: "numeric",
+  //   });
+  // };
 
   return (
     <div className="space-y-6">
@@ -180,12 +180,12 @@ export default function RolesList() {
                   >
                     Users
                   </TableCell>
-                  <TableCell
+                  {/* <TableCell
                     isHeader
                     className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                   >
                     Tanggal Dibuat
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell
                     isHeader
                     className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
@@ -220,12 +220,12 @@ export default function RolesList() {
                         <Badge size="sm" color="primary">
                           {role.permissions_count} Permissions
                         </Badge>
-                        {role.permissions.length > 0 && (
+                        {/* {role.permissions.length > 0 && (
                           <div className="text-xs text-gray-500 dark:text-gray-400">
                             {role.permissions.slice(0, 2).map((p) => p.name).join(", ")}
                             {role.permissions.length > 2 && ` +${role.permissions.length - 2}`}
                           </div>
-                        )}
+                        )} */}
                       </div>
                     </TableCell>
                     <TableCell className="px-5 py-4">
@@ -233,9 +233,9 @@ export default function RolesList() {
                         {role.users_count} Users
                       </Badge>
                     </TableCell>
-                    <TableCell className="px-5 py-4 text-gray-500 text-theme-sm dark:text-gray-400">
+                    {/* <TableCell className="px-5 py-4 text-gray-500 text-theme-sm dark:text-gray-400">
                       {formatDate(role.created_at)}
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell className="px-5 py-4">
                       {hasPermission(['view_role', 'view_any_role']) && (
                         <button

@@ -5,10 +5,10 @@ import PageMeta from "../../components/common/PageMeta";
 import { userAPI, roleAPI } from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 import { useModal } from "../../hooks/useModal";
-import { Modal } from "../../components/ui/modal";
+import { Modal, ConfirmModal, SuccessModal } from "../../components/ui/modal";
 import Input from "../../components/form/input/InputField";
 import Label from "../../components/form/Label";
-import { ArrowRightIcon, InfoIcon, LockIcon, CheckLineIcon, AngleLeftIcon, TrashBinIcon, UserCircleIcon, EyeIcon, EyeCloseIcon } from "../../icons";
+import { InfoIcon, LockIcon, CheckLineIcon, AngleLeftIcon, TrashBinIcon, UserCircleIcon, EyeIcon, EyeCloseIcon } from "../../icons";
 import UserSidebar from "./UserSidebar";
 import DetailsTab from "./DetailsTab";
 import RolesTab from "./RolesTab";
@@ -44,6 +44,9 @@ export default function EditUser() {
   const [countryCode, setCountryCode] = useState<string>("+62");
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const { isOpen: isResetPasswordModalOpen, openModal: openResetPasswordModal, closeModal: closeResetPasswordModal } = useModal();
+  const { isOpen: isImpersonateModalOpen, openModal: openImpersonateModal, closeModal: closeImpersonateModal } = useModal();
+  const { isOpen: isDeleteModalOpen, openModal: openDeleteModal, closeModal: closeDeleteModal } = useModal();
+  const { isOpen: isSuccessModalOpen, openModal: openSuccessModal, closeModal: closeSuccessModal } = useModal();
   const [resetPasswordData, setResetPasswordData] = useState({
     password: "",
     confirm_password: "",
@@ -51,6 +54,7 @@ export default function EditUser() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     if (id) {
@@ -155,15 +159,16 @@ export default function EditUser() {
     fetchUserData();
   };
 
+  const handleImpersonateClick = () => {
+    openImpersonateModal();
+  };
+
   const handleImpersonate = async () => {
     if (!id) return;
 
-    if (!window.confirm("Apakah Anda yakin ingin masuk sebagai user ini? Anda akan melihat aplikasi dari perspektif user tersebut.")) {
-      return;
-    }
-
     setIsImpersonating(true);
     setError(null);
+    closeImpersonateModal();
 
     try {
       await impersonate(id);
@@ -208,7 +213,8 @@ export default function EditUser() {
         });
         setResetPasswordError(null);
         closeResetPasswordModal();
-        alert("Password berhasil direset");
+        setSuccessMessage("Password berhasil direset");
+        openSuccessModal();
       } else {
         setResetPasswordError(response.message || "Gagal reset password");
       }
@@ -220,17 +226,16 @@ export default function EditUser() {
     }
   };
 
+  const handleDeleteUserClick = () => {
+    openDeleteModal();
+  };
+
   const handleDeleteUser = async () => {
     if (!id) return;
 
-    const userFullName = userData?.fullname || `${userData?.firstname} ${userData?.lastname}`.trim() || userData?.username || 'User';
-    
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus user "${userFullName}"? Tindakan ini tidak dapat dibatalkan.`)) {
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
+    closeDeleteModal();
 
     try {
       const response = await userAPI.deleteUser(id);
@@ -375,18 +380,7 @@ export default function EditUser() {
           description="Edit user information"
         />
         <PageBreadcrumb
-          pageTitle={
-            <div className="flex items-center gap-2">
-              <Link
-                to="/users"
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-              >
-                Users
-              </Link>
-              <ArrowRightIcon className="w-4 h-4 text-gray-400" />
-              <span>Edit User</span>
-            </div>
-          }
+          pageTitle="Edit User"
         />
         <div className="flex items-center justify-center py-12">
           <div className="text-gray-500 dark:text-gray-400">Memuat data user...</div>
@@ -403,18 +397,7 @@ export default function EditUser() {
           description="Edit user information"
         />
         <PageBreadcrumb
-          pageTitle={
-            <div className="flex items-center gap-2">
-              <Link
-                to="/users"
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-              >
-                Users
-              </Link>
-              <ArrowRightIcon className="w-4 h-4 text-gray-400" />
-              <span>Edit User</span>
-            </div>
-          }
+          pageTitle="Edit User"
         />
         <div className="flex items-center justify-center py-12">
           <div className="text-red-500 dark:text-red-400">
@@ -435,19 +418,20 @@ export default function EditUser() {
       />
       <PageBreadcrumb
         pageTitle={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 font-normal text-base">
             <Link
               to="/users"
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+              className="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
             >
               Users
             </Link>
-            <ArrowRightIcon className="w-4 h-4 text-gray-400" />
+            <span className="text-gray-600">&gt;</span>
             <span>{userFullName}</span>
-            <ArrowRightIcon className="w-4 h-4 text-gray-400" />
+            <span className="text-gray-600">&gt;</span>
             <span>Edit</span>
           </div>
         }
+        hideBreadcrumb={true}
       />
 
       <div className="space-y-6">
@@ -460,7 +444,7 @@ export default function EditUser() {
             {hasSuperAdminRole && (
               <button
                 type="button"
-                onClick={handleImpersonate}
+                onClick={handleImpersonateClick}
                 disabled={isImpersonating}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -585,7 +569,7 @@ export default function EditUser() {
                   {hasPermission(['delete_user', 'delete_any_user']) && (
                     <button
                       type="button"
-                      onClick={handleDeleteUser}
+                      onClick={handleDeleteUserClick}
                       disabled={isLoading}
                       className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -747,6 +731,51 @@ export default function EditUser() {
           </div>
         </div>
       </Modal>
+
+      {/* Impersonate Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isImpersonateModalOpen}
+        onClose={closeImpersonateModal}
+        onConfirm={handleImpersonate}
+        title="Impersonate User"
+        message={
+          <>
+            Apakah Anda yakin ingin masuk sebagai user <strong className="text-gray-800 dark:text-white">{userFullName}</strong>? Anda akan melihat aplikasi dari perspektif user tersebut.
+          </>
+        }
+        confirmText="Impersonate"
+        cancelText="Cancel"
+        confirmButtonColor="warning"
+        icon={<UserCircleIcon className="w-6 h-6" />}
+        isLoading={isImpersonating}
+      />
+
+      {/* Delete User Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteUser}
+        title="Hapus User"
+        message={
+          <>
+            Apakah Anda yakin ingin menghapus user <strong className="text-gray-800 dark:text-white">{userFullName}</strong>?
+          </>
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmButtonColor="danger"
+        icon={<TrashBinIcon className="w-6 h-6" />}
+        isLoading={isLoading}
+        showWarning={true}
+        warningMessage="Tindakan ini tidak dapat dibatalkan dan akan menghapus user secara permanen."
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={isSuccessModalOpen}
+        onClose={closeSuccessModal}
+        message={successMessage}
+      />
     </>
   );
 }

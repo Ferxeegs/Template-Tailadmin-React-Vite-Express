@@ -12,6 +12,8 @@ import { userAPI } from "../../utils/api";
 import { PencilIcon, TrashBinIcon, UserCircleIcon } from "../../icons";
 import { useAuth } from "../../context/AuthContext";
 import TableSkeleton from "../../components/common/TableSkeleton";
+import { ConfirmModal } from "../../components/ui/modal";
+import { useModal } from "../../hooks/useModal";
 
 interface User {
   id: string;
@@ -31,6 +33,11 @@ interface User {
     room_number: string | null;
     is_verified: boolean;
   } | null;
+  roles?: Array<{
+    id: string;
+    name: string;
+    guard_name: string;
+  }>;
 }
 
 export default function UsersList() {
@@ -50,6 +57,12 @@ export default function UsersList() {
   const [showDeleted, setShowDeleted] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [impersonatingUserId, setImpersonatingUserId] = useState<string | null>(null);
+  
+  // Modal states
+  const { isOpen: isImpersonateModalOpen, openModal: openImpersonateModal, closeModal: closeImpersonateModal } = useModal();
+  const { isOpen: isDeleteModalOpen, openModal: openDeleteModal, closeModal: closeDeleteModal } = useModal();
+  const [selectedUserForImpersonate, setSelectedUserForImpersonate] = useState<{ id: string; name: string } | null>(null);
+  const [selectedUserForDelete, setSelectedUserForDelete] = useState<{ id: string; name: string } | null>(null);
 
   const fetchUsers = async (forceLoading = false) => {
     // Hanya set loading jika force loading atau benar-benar tidak ada data
@@ -104,13 +117,18 @@ export default function UsersList() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const handleImpersonate = async (userId: string) => {
-    if (!window.confirm("Apakah Anda yakin ingin masuk sebagai user ini? Anda akan melihat aplikasi dari perspektif user tersebut.")) {
-      return;
-    }
+  const handleImpersonateClick = (userId: string, userName: string) => {
+    setSelectedUserForImpersonate({ id: userId, name: userName });
+    openImpersonateModal();
+  };
 
+  const handleImpersonate = async () => {
+    if (!selectedUserForImpersonate) return;
+
+    const userId = selectedUserForImpersonate.id;
     setImpersonatingUserId(userId);
     setError(null);
+    closeImpersonateModal();
 
     try {
       await impersonate(userId);
@@ -121,16 +139,22 @@ export default function UsersList() {
       console.error("Impersonate user error:", err);
     } finally {
       setImpersonatingUserId(null);
+      setSelectedUserForImpersonate(null);
     }
   };
 
-  const handleForceDelete = async (userId: string, userName: string) => {
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus permanen user "${userName}"? Tindakan ini TIDAK DAPAT DIBATALKAN dan akan menghapus semua data terkait.`)) {
-      return;
-    }
+  const handleForceDeleteClick = (userId: string, userName: string) => {
+    setSelectedUserForDelete({ id: userId, name: userName });
+    openDeleteModal();
+  };
 
+  const handleForceDelete = async () => {
+    if (!selectedUserForDelete) return;
+
+    const userId = selectedUserForDelete.id;
     setDeletingUserId(userId);
     setError(null);
+    closeDeleteModal();
 
     try {
       const response = await userAPI.forceDeleteUser(userId);
@@ -146,6 +170,7 @@ export default function UsersList() {
       console.error("Force delete user error:", err);
     } finally {
       setDeletingUserId(null);
+      setSelectedUserForDelete(null);
     }
   };
 
@@ -287,14 +312,14 @@ export default function UsersList() {
                     isHeader
                     className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                   >
-                    Profile
+                    Role
                   </TableCell>
-                  <TableCell
+                  {/* <TableCell
                     isHeader
                     className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                   >
                     Status
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell
                     isHeader
                     className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
@@ -337,22 +362,19 @@ export default function UsersList() {
                       {user.username}
                     </TableCell>
                     <TableCell className="px-5 py-4">
-                      {user.user_profile ? (
-                        <div className="text-theme-xs">
-                          <div className="text-gray-500 dark:text-gray-400">
-                            NIM: {user.user_profile.nim}
-                          </div>
-                          {user.user_profile.major && (
-                            <div className="text-gray-500 dark:text-gray-400">
-                              {user.user_profile.major}
-                            </div>
-                          )}
+                      {user.roles && user.roles.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {user.roles.map((role) => (
+                            <Badge key={role.id} size="sm" color="primary">
+                              {role.name}
+                            </Badge>
+                          ))}
                         </div>
                       ) : (
                         <span className="text-gray-400 text-theme-xs">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="px-5 py-4">
+                    {/* <TableCell className="px-5 py-4">
                       {user.user_profile ? (
                         <Badge
                           size="sm"
@@ -365,7 +387,7 @@ export default function UsersList() {
                           No Profile
                         </Badge>
                       )}
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell className="px-5 py-4 text-gray-500 text-theme-sm dark:text-gray-400">
                       {formatDate(user.created_at)}
                     </TableCell>
@@ -384,7 +406,7 @@ export default function UsersList() {
                             )}
                             {hasSuperAdminRole && (
                               <button
-                                onClick={() => handleImpersonate(user.id)}
+                                onClick={() => handleImpersonateClick(user.id, user.fullname || `${user.firstname} ${user.lastname}`.trim() || user.username)}
                                 disabled={impersonatingUserId === user.id}
                                 className="inline-flex items-center justify-center w-8 h-8 text-blue-500 transition-colors rounded-lg hover:bg-blue-100 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-800 dark:hover:text-blue-200"
                                 title="Impersonate User"
@@ -396,7 +418,7 @@ export default function UsersList() {
                         )}
                         {showDeleted && (
                           <button
-                            onClick={() => handleForceDelete(user.id, user.fullname || `${user.firstname} ${user.lastname}`.trim() || user.username)}
+                            onClick={() => handleForceDeleteClick(user.id, user.fullname || `${user.firstname} ${user.lastname}`.trim() || user.username)}
                             disabled={deletingUserId === user.id}
                             className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Force Delete (Permanent)"
@@ -440,6 +462,44 @@ export default function UsersList() {
           </div>
         </div>
       )}
+
+      {/* Impersonate Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isImpersonateModalOpen}
+        onClose={closeImpersonateModal}
+        onConfirm={handleImpersonate}
+        title="Impersonate User"
+        message={
+          <>
+            Apakah Anda yakin ingin masuk sebagai user <strong className="text-gray-800 dark:text-white">{selectedUserForImpersonate?.name}</strong>? Anda akan melihat aplikasi dari perspektif user tersebut.
+          </>
+        }
+        confirmText="Impersonate"
+        cancelText="Cancel"
+        confirmButtonColor="primary"
+        icon={<UserCircleIcon className="w-6 h-6" />}
+        isLoading={impersonatingUserId === selectedUserForImpersonate?.id}
+      />
+
+      {/* Force Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleForceDelete}
+        title="Hapus Permanen User"
+        message={
+          <>
+            Apakah Anda yakin ingin menghapus permanen user <strong className="text-gray-800 dark:text-white">{selectedUserForDelete?.name}</strong>?
+          </>
+        }
+        confirmText="Delete Permanently"
+        cancelText="Cancel"
+        confirmButtonColor="danger"
+        icon={<TrashBinIcon className="w-6 h-6" />}
+        isLoading={deletingUserId === selectedUserForDelete?.id}
+        showWarning={true}
+        warningMessage="Tindakan ini TIDAK DAPAT DIBATALKAN dan akan menghapus semua data terkait user ini secara permanen."
+      />
     </div>
   );
 }

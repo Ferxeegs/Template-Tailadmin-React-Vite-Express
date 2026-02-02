@@ -92,3 +92,7 @@ export const Modal: React.FC<ModalProps> = ({
     </div>
   );
 };
+
+// Export reusable modal components
+export { ConfirmModal } from "./ConfirmModal";
+export { SuccessModal } from "./SuccessModal";

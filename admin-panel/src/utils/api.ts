@@ -303,6 +303,11 @@ export const userAPI = {
           room_number: string | null;
           is_verified: boolean;
         } | null;
+        roles?: Array<{
+          id: string;
+          name: string;
+          guard_name: string;
+        }>;
       }>;
       pagination: {
         page: number;

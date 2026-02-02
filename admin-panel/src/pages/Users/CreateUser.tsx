@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import { userAPI, roleAPI } from "../../utils/api";
-import { ArrowRightIcon, InfoIcon, LockIcon, UserCircleIcon, AngleLeftIcon } from "../../icons";
+import { InfoIcon, LockIcon, UserCircleIcon, AngleLeftIcon } from "../../icons";
 import CreateUserSidebar from "./CreateUserSidebar";
 import DetailsTab from "./DetailsTab";
 import RolesTab from "./RolesTab";
@@ -215,17 +215,18 @@ export default function CreateUser() {
       />
       <PageBreadcrumb
         pageTitle={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 font-normal text-base">
             <Link
               to="/users"
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+              className="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
             >
               Users
             </Link>
-            <ArrowRightIcon className="w-4 h-4 text-gray-400" />
+            <span className="text-gray-600">&gt;</span>
             <span>Create User</span>
           </div>
         }
+        hideBreadcrumb={true}
       />
 
       <div className="space-y-6">
