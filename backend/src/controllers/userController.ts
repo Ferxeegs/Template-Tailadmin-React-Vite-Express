@@ -250,7 +250,7 @@ export const createUser = async (req: Request, res: Response): Promise<Response>
     }
 
     // Hash password
-    const saltRounds = 10;
+    const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Generate fullname jika tidak ada
@@ -982,7 +982,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<Respon
     }
 
     // Hash password baru
-    const saltRounds = 10;
+    const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Update password

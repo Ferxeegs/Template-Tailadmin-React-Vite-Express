@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, getMe, impersonate, stopImpersonate } from '../controllers/authController.js';
+import { register, login, getMe, impersonate, stopImpersonate, refreshToken } from '../controllers/authController.js';
 import { validateRegister, validateLogin } from '../middlewares/validationMiddleware.js';
 import { protect } from '../middlewares/authMiddleware.js';
 
@@ -18,6 +18,13 @@ router.post('/register', validateRegister, register);
  * @access  Public
  */
 router.post('/login', validateLogin, login);
+
+/**
+ * @route   POST /api/auth/refresh
+ * @desc    Refresh access token menggunakan refresh token
+ * @access  Public
+ */
+router.post('/refresh', refreshToken);
 
 /**
  * @route   GET /api/auth/me

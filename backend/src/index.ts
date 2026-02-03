@@ -13,10 +13,13 @@ const app = express();
 const PORT = process.env.PORT || 8000;
 
 // Konfigurasi CORS agar mendukung 2 frontend
-const allowedOrigins = [
-  'http://localhost:3000', // Frontend Client (Next.js)
-  'http://localhost:5173', // Admin Panel (Vite)
-];
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+  : [
+      'http://localhost:3000', // Frontend Client (Next.js)
+      'http://localhost:5173', // Admin Panel (Vite)
+      'http://localhost:5174', // Admin Panel (Vite alternative port)
+    ];
 
 app.use(cors({
   origin: (origin, callback) => {

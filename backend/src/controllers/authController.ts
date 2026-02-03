@@ -28,7 +28,7 @@ export const register = async (req: Request, res: Response): Promise<Response> =
     }
 
     // 2. Hash password
-    const saltRounds = 10;
+    const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // 3. Generate fullname jika tidak ada
@@ -125,7 +125,8 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
       return sendError(res, 'Konfigurasi server error', 500);
     }
 
-    const token = jwt.sign(
+    // Generate access token (short-lived)
+    const accessToken = jwt.sign(
       {
         id: user.id,
         email: user.email,
@@ -133,11 +134,25 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
       },
       JWT_SECRET,
       {
-        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+        expiresIn: process.env.JWT_EXPIRES_IN || '15m', // Access token expires in 15 minutes
       } as SignOptions
     );
 
-    // 5. Response dengan user data (tanpa password) dan token
+    // Generate refresh token (long-lived)
+    const refreshToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        type: 'refresh',
+      },
+      JWT_SECRET,
+      {
+        expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d', // Refresh token expires in 7 days
+      } as SignOptions
+    );
+
+    // 5. Response dengan user data (tanpa password) dan tokens
     const userData = {
       id: user.id,
       username: user.username,
@@ -149,7 +164,8 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
 
     return sendSuccess(res, 'Login berhasil', {
       user: userData,
-      token,
+      token: accessToken,
+      refreshToken,
     });
   } catch (error: any) {
     console.error('Login error:', error);
@@ -413,9 +429,9 @@ export const impersonate = async (req: Request, res: Response): Promise<Response
       isImpersonating: true,
     };
 
-    const tokenOptions: SignOptions = {
-      expiresIn: '24h', // Token impersonate berlaku 24 jam
-    };
+    const tokenOptions = {
+      expiresIn: process.env.IMPERSONATE_TOKEN_EXPIRES_IN || '24h', // Token impersonate expires
+    } as SignOptions;
 
     const impersonateToken = jwt.sign(tokenPayload, JWT_SECRET, tokenOptions);
 
@@ -469,6 +485,95 @@ export const impersonate = async (req: Request, res: Response): Promise<Response
     return sendError(
       res,
       'Gagal melakukan impersonate',
+      500,
+      process.env.NODE_ENV === 'development' ? error.message : undefined
+    );
+  }
+};
+
+/**
+ * Controller untuk stop impersonate (kembali ke admin)
+ */
+/**
+ * Controller untuk refresh access token menggunakan refresh token
+ */
+export const refreshToken = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return sendError(res, 'Refresh token tidak ditemukan', 400);
+    }
+
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+      return sendError(res, 'Konfigurasi server error', 500);
+    }
+
+    // Verify refresh token
+    let decoded: any;
+    try {
+      decoded = jwt.verify(refreshToken, JWT_SECRET) as {
+        id: string;
+        email: string;
+        username: string;
+        type?: string;
+      };
+    } catch (jwtError: any) {
+      if (jwtError.name === 'TokenExpiredError') {
+        return sendError(res, 'Refresh token telah kedaluwarsa', 401);
+      }
+      if (jwtError.name === 'JsonWebTokenError') {
+        return sendError(res, 'Refresh token tidak valid', 401);
+      }
+      return sendError(res, 'Gagal memverifikasi refresh token', 401);
+    }
+
+    // Verify that this is a refresh token
+    if (decoded.type !== 'refresh') {
+      return sendError(res, 'Token bukan refresh token', 401);
+    }
+
+    // Check if user still exists and is not deleted
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        deleted_at: true,
+      },
+    });
+
+    if (!user) {
+      return sendError(res, 'User tidak ditemukan', 404);
+    }
+
+    if (user.deleted_at) {
+      return sendError(res, 'Akun telah dinonaktifkan', 403);
+    }
+
+    // Generate new access token
+    const newAccessToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+      },
+      JWT_SECRET,
+      {
+        expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+      } as SignOptions
+    );
+
+    return sendSuccess(res, 'Token berhasil di-refresh', {
+      token: newAccessToken,
+    });
+  } catch (error: any) {
+    console.error('Refresh token error:', error);
+    return sendError(
+      res,
+      'Gagal refresh token',
       500,
       process.env.NODE_ENV === 'development' ? error.message : undefined
     );

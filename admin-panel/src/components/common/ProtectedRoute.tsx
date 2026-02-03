@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Navigate } from "react-router";
 import { useAuth } from "../../context/AuthContext";
 import NotFound from "../../pages/OtherPage/NotFound";
+import Forbidden from "../../pages/OtherPage/Forbidden";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -19,7 +20,7 @@ export default function ProtectedRoute({
   requiredPermission,
   fallback,
 }: ProtectedRouteProps) {
-  const { hasPermission, isLoading, isAuthenticated } = useAuth();
+  const { hasPermission, isLoading, isAuthenticated, user } = useAuth();
 
   // Jika masih loading, tampilkan loading state atau null
   if (isLoading) {
@@ -33,6 +34,12 @@ export default function ProtectedRoute({
   // Jika tidak authenticated, redirect ke signin
   if (!isAuthenticated) {
     return <Navigate to="/signin" replace />;
+  }
+
+  // Cek jika user memiliki role "mahasiswa", block akses ke admin panel
+  if (user?.roles && user.roles.some(role => role.name.toLowerCase() === 'mahasiswa')) {
+    // Render Forbidden menggunakan Portal ke body agar benar-benar full screen tanpa header/sidebar
+    return createPortal(<Forbidden />, document.body);
   }
 
   // Jika ada requiredPermission dan user tidak memiliki permission, tampilkan 404

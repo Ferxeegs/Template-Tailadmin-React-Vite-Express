@@ -4,7 +4,7 @@ import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
-import { authAPI, setAuthToken } from "../../utils/api";
+import { authAPI, setAuthToken, setRefreshToken, removeAuthToken } from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 
 export default function SignInForm() {
@@ -16,9 +16,12 @@ export default function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Auto-fill credentials in development mode
+  const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
+    email: isDevelopment ? (import.meta.env.VITE_DEV_ADMIN_EMAIL || "") : "",
+    password: isDevelopment ? (import.meta.env.VITE_DEV_ADMIN_PASSWORD || "") : "",
   });
 
   // Check for success message from navigation state
@@ -52,14 +55,45 @@ export default function SignInForm() {
       });
 
       if (response.success && response.data) {
-        // Simpan token
+        // Simpan token dan refresh token
         setAuthToken(response.data.token);
+        if (response.data.refreshToken) {
+          setRefreshToken(response.data.refreshToken);
+        }
         
         // Fetch user data
         await fetchUser();
         
-        // Redirect ke dashboard
-        navigate("/");
+        // Tunggu sebentar untuk memastikan user state sudah ter-update
+        // Kemudian cek role dari context
+        setTimeout(() => {
+          // Cek role dari user yang sudah di-fetch
+          const checkUserRole = async () => {
+            try {
+              const userResponse = await authAPI.getMe();
+              if (userResponse.success && userResponse.data) {
+                const userRoles = userResponse.data.roles || [];
+                const isMahasiswa = userRoles.some((role: any) => role.name.toLowerCase() === 'mahasiswa');
+                
+                if (isMahasiswa) {
+                  // Jika mahasiswa, hapus token dan tampilkan error
+                  removeAuthToken();
+                  setError("Akses ditolak. Role mahasiswa tidak dapat mengakses admin panel.");
+                  setIsLoading(false);
+                  return;
+                }
+                
+                // Redirect ke dashboard jika bukan mahasiswa
+                navigate("/");
+              }
+            } catch (err) {
+              console.error('Error checking user role:', err);
+              navigate("/");
+            }
+          };
+          
+          checkUserRole();
+        }, 200);
       } else {
         setError(response.message || "Login gagal. Silakan coba lagi.");
       }
@@ -93,7 +127,7 @@ export default function SignInForm() {
             </p>
           </div>
           <div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
+            {/* <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
               <button className="inline-flex items-center justify-center gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg px-7 hover:bg-gray-200 hover:text-gray-800 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10">
                 <svg
                   width="20"
@@ -134,8 +168,8 @@ export default function SignInForm() {
                 </svg>
                 Sign in with X
               </button>
-            </div>
-            <div className="relative py-3 sm:py-5">
+            </div> */}
+            {/* <div className="relative py-3 sm:py-5">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
               </div>
@@ -144,7 +178,7 @@ export default function SignInForm() {
                   Or
                 </span>
               </div>
-            </div>
+            </div> */}
             <form onSubmit={handleSubmit}>
               <div className="space-y-6">
                 {successMessage && (
@@ -221,17 +255,17 @@ export default function SignInForm() {
               </div>
             </form>
 
-            <div className="mt-5">
+            {/* <div className="mt-5">
               <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
                 Don&apos;t have an account? {""}
                 <Link
                   to="/signup"
                   className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
                 >
-                  Sign Up
+                  Sign Up 
                 </Link>
               </p>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

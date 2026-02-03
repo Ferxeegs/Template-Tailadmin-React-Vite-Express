@@ -1,11 +1,20 @@
 import { SidebarProvider, useSidebar } from "../context/SidebarContext";
 import { Outlet } from "react-router";
+import { createPortal } from "react-dom";
+import { useAuth } from "../context/AuthContext";
 import AppHeader from "./AppHeader";
 import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
+import Forbidden from "../pages/OtherPage/Forbidden";
 
 const LayoutContent: React.FC = () => {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
+  const { user, isLoading } = useAuth();
+
+  // Cek jika user memiliki role "mahasiswa", tampilkan Forbidden full screen
+  if (!isLoading && user?.roles && user.roles.some(role => role.name.toLowerCase() === 'mahasiswa')) {
+    return createPortal(<Forbidden />, document.body);
+  }
 
   return (
     <div className="min-h-screen xl:flex">

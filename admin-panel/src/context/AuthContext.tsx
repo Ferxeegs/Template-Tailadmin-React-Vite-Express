@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authAPI, getAuthToken, removeAuthToken, setAuthToken, setAdminToken } from '../utils/api';
+import { authAPI, getAuthToken, removeAuthToken, setAuthToken, setRefreshToken, setAdminToken } from '../utils/api';
 
 export interface User {
   id: string;

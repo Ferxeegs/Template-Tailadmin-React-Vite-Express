@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { EyeIcon, EyeCloseIcon } from "../../icons";
 
 interface CreateUserSidebarProps {
   password: string;
@@ -18,6 +19,8 @@ export default function CreateUserSidebar({
   onProfileImageChange,
 }: CreateUserSidebarProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(profileImage || null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -114,25 +117,53 @@ export default function CreateUserSidebar({
             <label className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">
               Password <span className="text-red-500">*</span>
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => onPasswordChange(e.target.value)}
-              placeholder="Enter password"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => onPasswordChange(e.target.value)}
+                placeholder="Enter password"
+                className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeCloseIcon className="w-4 h-4 fill-current" />
+                ) : (
+                  <EyeIcon className="w-4 h-4 fill-current" />
+                )}
+              </button>
+            </div>
           </div>
           <div>
             <label className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">
               Confirm Password <span className="text-red-500">*</span>
             </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => onConfirmPasswordChange(e.target.value)}
-              placeholder="Confirm password"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => onConfirmPasswordChange(e.target.value)}
+                placeholder="Confirm password"
+                className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? (
+                  <EyeCloseIcon className="w-4 h-4 fill-current" />
+                ) : (
+                  <EyeIcon className="w-4 h-4 fill-current" />
+                )}
+              </button>
+            </div>
             {password && confirmPassword && password !== confirmPassword && (
               <p className="mt-1 text-xs text-red-500">Passwords do not match</p>
             )}

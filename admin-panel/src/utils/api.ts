@@ -2,7 +2,7 @@
  * API Utility untuk komunikasi dengan backend
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -41,6 +41,82 @@ async function apiRequest<T>(
   try {
     const response = await fetch(url, config);
     const data = await response.json();
+
+    // Jika token expired (401), coba refresh token
+    if (response.status === 401 && token && !url.includes('/auth/refresh') && !url.includes('/auth/login')) {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (refreshToken) {
+        try {
+          const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ refreshToken }),
+          });
+
+          const refreshData = await refreshResponse.json();
+
+          if (refreshResponse.ok && refreshData.success && refreshData.data?.token) {
+            // Simpan token baru
+            localStorage.setItem('token', refreshData.data.token);
+
+            // Retry original request dengan token baru
+            const retryConfig: RequestInit = {
+              ...options,
+              headers: {
+                ...defaultHeaders,
+                'Authorization': `Bearer ${refreshData.data.token}`,
+                ...options.headers,
+              },
+            };
+
+            const retryResponse = await fetch(url, retryConfig);
+            const retryData = await retryResponse.json();
+
+            if (!retryResponse.ok) {
+              const errorMessage = retryData.message || retryData.error || 'Terjadi kesalahan';
+              return {
+                success: false,
+                message: errorMessage,
+                error: retryData.error || retryData.message || errorMessage,
+              };
+            }
+
+            return retryData;
+          } else {
+            // Refresh token juga expired atau invalid, logout user
+            localStorage.removeItem('token');
+            localStorage.removeItem('refreshToken');
+            window.location.href = '/signin';
+            return {
+              success: false,
+              message: 'Session telah berakhir. Silakan login kembali.',
+              error: 'Session expired',
+            };
+          }
+        } catch (refreshError) {
+          // Refresh gagal, logout user
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          window.location.href = '/signin';
+          return {
+            success: false,
+            message: 'Session telah berakhir. Silakan login kembali.',
+            error: 'Session expired',
+          };
+        }
+      } else {
+        // Tidak ada refresh token, logout user
+        localStorage.removeItem('token');
+        window.location.href = '/signin';
+        return {
+          success: false,
+          message: 'Session telah berakhir. Silakan login kembali.',
+          error: 'Session expired',
+        };
+      }
+    }
 
     if (!response.ok) {
       // Jika error dari backend, gunakan message atau error field
@@ -104,6 +180,7 @@ export const authAPI = {
         fullname: string;
       };
       token: string;
+      refreshToken: string;
     }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -198,6 +275,18 @@ export const authAPI = {
   },
 
   /**
+   * Refresh access token using refresh token
+   */
+  refreshToken: async (refreshToken: string) => {
+    return apiRequest<{
+      token: string;
+    }>('/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+    });
+  },
+
+  /**
    * Stop impersonating and return to admin account
    */
   stopImpersonate: async () => {
@@ -236,6 +325,13 @@ export const setAuthToken = (token: string) => {
 };
 
 /**
+ * Helper untuk menyimpan refresh token
+ */
+export const setRefreshToken = (refreshToken: string) => {
+  localStorage.setItem('refreshToken', refreshToken);
+};
+
+/**
  * Helper untuk menyimpan admin token asli (sebelum impersonate)
  */
 export const setAdminToken = (token: string) => {
@@ -247,6 +343,7 @@ export const setAdminToken = (token: string) => {
  */
 export const removeAuthToken = () => {
   localStorage.removeItem('token');
+  localStorage.removeItem('refreshToken');
   localStorage.removeItem('admin_token');
 };
 
@@ -262,6 +359,13 @@ export const getAuthToken = (): string | null => {
  */
 export const getAdminToken = (): string | null => {
   return localStorage.getItem('admin_token');
+};
+
+/**
+ * Helper untuk mendapatkan refresh token
+ */
+export const getRefreshToken = (): string | null => {
+  return localStorage.getItem('refreshToken');
 };
 
 /**

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -75,6 +76,65 @@ async function main() {
     } else {
       console.log(`Permission "${permission.name}" sudah ada, dilewati`);
     }
+  }
+
+  console.log('Sedang melakukan seeding superadmin user...');
+
+  // Cek apakah superadmin user sudah ada
+  const existingSuperAdmin = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: 'admin@rusunawa.com' },
+        { username: 'superadmin' },
+      ],
+    },
+  });
+
+  if (!existingSuperAdmin) {
+    // Hash password untuk superadmin
+    const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
+    const adminEmail = process.env.SEEDER_ADMIN_EMAIL || 'admin@rusunawa.com';
+    const adminPassword = process.env.SEEDER_ADMIN_PASSWORD || 'admin123';
+    const adminUsername = process.env.SEEDER_ADMIN_USERNAME || 'superadmin';
+    const hashedPassword = await bcrypt.hash(adminPassword, saltRounds);
+
+    // Buat superadmin user
+    const superAdmin = await prisma.user.create({
+      data: {
+        username: adminUsername,
+        email: adminEmail,
+        password: hashedPassword,
+        firstname: 'Super',
+        lastname: 'Admin',
+        fullname: 'Super Admin',
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+    });
+
+    // Ambil role superadmin
+    const superAdminRole = await prisma.role.findFirst({
+      where: { name: 'superadmin' },
+    });
+
+    if (superAdminRole) {
+      // Assign role superadmin ke user
+      await prisma.userRole.create({
+        data: {
+          user_id: superAdmin.id,
+          role_id: superAdminRole.id,
+        },
+      });
+      const adminEmail = process.env.SEEDER_ADMIN_EMAIL || 'admin@rusunawa.com';
+      const adminPassword = process.env.SEEDER_ADMIN_PASSWORD || 'admin123';
+      console.log('Superadmin user berhasil dibuat dengan role superadmin');
+      console.log(`Email: ${adminEmail}`);
+      console.log(`Password: ${adminPassword}`);
+    } else {
+      console.log('Warning: Role superadmin tidak ditemukan, user dibuat tanpa role');
+    }
+  } else {
+    console.log('Superadmin user sudah ada, dilewati');
   }
 
   console.log('Seeding selesai!');
